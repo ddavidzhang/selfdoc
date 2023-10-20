@@ -17,12 +17,14 @@
 共识与一致性的联系：一致性是目的，共识是达成一致性的方法与过程。
 
 ## 2. Paxos 共识算法介绍
+
 ### 基本原理
+
 Paxos算法是分布式系统中最基础的算法，它是一种基于消息传递且具有高度容错特性的一致性算法，由Leslie Lamport于1990年提出。
 分布式数据一致性问题的复杂度，主要会受到下面两个因素的共同影响：
 1. 系统内部各个节点间的通讯是不可靠的，消息可能会丢失、延迟、乱序等。
 2. 系统外部各个用户访问是可并发的。
-![paxos.png](paxos.png)
+![paxos.png](pic/paxos.png)
 Paxos 算法将分布式系统中的节点分为提案节点、决策节点和记录节点三类，Paxos 流程分为Prepare和Accept两个阶段，提案（proposal），在Raft中称为日志，是一次操作转移，有唯一的ID。
 提案节点收到超过半数的应答后，会进入Accept阶段，向决策节点发送Accept请求。
 决策节点收到后，会给提案节点两个承诺和一个应答：
@@ -30,21 +32,27 @@ Paxos 算法将分布式系统中的节点分为提案节点、决策节点和�
 - 承诺不会再接受提案 ID 小于 n 的 Accept 请求
 - 回复已经批准过的提案中 ID 最大的那个提案所设定的值和提案 ID，如果该值从来没有被任何提案设定过，则返回空值。违反承诺的请求会被忽略，不理会。
 提案节点Accept设定的值为所有Promise应答中最大n决策点的值，来保证与其他已经批准的提案达成一致。
+
 ### 算法劣势
+
 如果两个提案节点交替使用更大的提案 ID 使得准备阶段成功，但是批准阶段失败的话，这个过程理论上可以无限持续下去，形成活锁（Live Lock）。在算法实现中，会引入随机超时时间来避免活锁的产生。
-![paxos_live.png](paxos_live.png)
+![paxos_live.png](pic/paxos_live.png)
 Basic Paxos 只能对单个值形成决议，并且决议的形成至少需要两次网络请求和应答（准备和批准阶段各一次），高并发情况下将产生较大的网络开销，极端情况下甚至可能形成活锁。
 活锁问题和许多 Basic Paxos 异常场景中所遭遇的麻烦，都可以看作是源于任何一个提案节点都能够完全平等地、与其他节点并发地提出提案而带来的复杂问题。
 
 ## 3. Raft 共识算法介绍
-### 基本原理
-![multi_paxos.png](multi_paxos.png)
+
+### 原理
+
+![multi_paxos.png](pic/multi_paxos.png)
 Raft 算法是一种基于日志复制的一致性算法，由 Diego Ongaro 和 John Ousterhout 于 2013 年提出。Raft可以看做是基于Paxos算法的改进，增加了选主的过程。
 Raft 算法的核心思想是，将一次操作转移（Proposal）分为两个阶段，先选举出领导者，再由领导者负责日志复制。
 我们也可以通俗地理解为：选主过后，就不会再有其他节点与它竞争，相当于是处于无并发的环境当中进行的有序操作，所以此时系统中要对某个值达成一致，只需要进行一次批准的交互即可。
 - 选主的过程，无非就是基于"谁来做主"这个填达成共识的过程。
 - 日志复制，先确认再提交的的二阶段提交过程，只要主收到多数节点的确认就发起提交。
+
 ### 安全性
+
 在专业资料中，Safety 和 Liveness 通常会被翻译为“协定性”和“终止性”。它们也是由 Lamport 最先提出的，定义是：
 - 协定性（Safety）：所有的坏事都不会发生（Something "bad" will never happen）。
 - 终止性（Liveness）：所有的好事都终将发生，但不知道是啥时候（Something "good" will must happen, but we don't know when）。 
@@ -53,7 +61,10 @@ Raft安全性：
 - 日志复制过程，Safety 表现在多数节点正常工作条件下日志可以一致性写入，整体服务对外提供一致性数据，Liveness 表现在所有节点数据最终处于一致。
 
 ## 4. 后续
+
 简单的介绍原理可能还是比较空泛，后续将输出文章详细介绍etcd中的raft实现，以及raft的一些优化。
 ## 参考资料
-![周志明的软件架构课](https://time.geekbang.org/column/article/337708)
-![一种可以让人理解的共识算法](https://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14)
+
+[周志明的软件架构课](https://time.geekbang.org/column/article/337708)
+
+[一种可以让人理解的共识算法](https://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14)
